@@ -1,2 +1,3 @@
 /node_modules/
-.db_connection.js
+.db_connection.js/
+.Database model.xlsx

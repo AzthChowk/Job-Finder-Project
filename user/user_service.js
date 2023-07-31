@@ -1,20 +1,13 @@
-import Joi from "joi";
-import { User } from "./user_model.js";
 import bcrypt from "bcrypt";
 import {
-  convertIdFromStringToMongoId,
-  checkIfInputIdIsValid,
+  checkIfInputIdIsValid
 } from "../utils.js";
+import { User } from "./user_model.js";
+import { schema } from "./user_validation.js";
+import jwt from "jsonwebtoken";
 
 // JOI VALIDATION FOR THE NEW USER REGISTRATION DATA
 export const checkValidation = async (req, res, next) => {
-  const schema = Joi.object({
-    email: Joi.string().required(),
-    contactNumber: Joi.string().max(10).required(),
-    userType: Joi.string().valid("Seeker", "Provider").required(),
-    name: Joi.string().min(3).max(55).required(),
-    password: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
-  });
   try {
     const validateUserData = await schema.validateAsync();
     next();
@@ -53,23 +46,27 @@ export const insertNewUserAfterValidation = async (req, res) => {
   }
 };
 
-// GET ALL USERS
+// GET ALL USERS - token authentication - payload verify 
 export const allUsersList = async (req, res) => {
-  const usersList = await User.aggregate([
-    {
-      $match: {},
-    },
-    {
-      $project: {
-        _id: 0,
-        name: 1,
-        userType: 1,
-        email: 1,
-        contactNumber: 1,
-      },
-    },
-  ]);
+const authorizationHeader = req.headers.authorization;
+console.log(authorizationHeader)
+if(!authorizationHeader){
+  return res.status(401).send("SOMETHNG WENT WRONG.")
+}
+const token = authorizationHeader.split(" ")[1];
+// const token = tokenData[1];
+// console.log(token);
+try {
+  const payload = jwt.verify(token, "jkdfkjndkjd")
+  const user = await User.findOne({_id:payload._id});
+  if (!user){
+    return res.status(401).send("YOU ARE NOT AUTHORIZED TO USE THIS SERVICE.")
+  }
+  const usersList = await User.find({});
   return res.status(200).send(usersList);
+} catch (error) {
+  return res.status(401).send({message:"SOMETHING WENT WRONG."})
+}
 };
 
 // GET SINGLE USER
