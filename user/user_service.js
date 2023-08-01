@@ -1,7 +1,5 @@
 import bcrypt from "bcrypt";
-import {
-  checkIfInputIdIsValid
-} from "../utils.js";
+import { checkIfInputIdIsValid } from "../utils.js";
 import { User } from "./user_model.js";
 import { schema } from "./user_validation.js";
 import jwt from "jsonwebtoken";
@@ -46,27 +44,27 @@ export const insertNewUserAfterValidation = async (req, res) => {
   }
 };
 
-// GET ALL USERS - token authentication - payload verify 
+// GET ALL USERS - token authentication - payload verify
 export const allUsersList = async (req, res) => {
-const authorizationHeader = req.headers.authorization;
-console.log(authorizationHeader)
-if(!authorizationHeader){
-  return res.status(401).send("SOMETHNG WENT WRONG.")
-}
-const token = authorizationHeader.split(" ")[1];
-// const token = tokenData[1];
-// console.log(token);
-try {
-  const payload = jwt.verify(token, "jkdfkjndkjd")
-  const user = await User.findOne({_id:payload._id});
-  if (!user){
-    return res.status(401).send("YOU ARE NOT AUTHORIZED TO USE THIS SERVICE.")
+  const authorizationHeader = req.headers.authorization;
+  console.log(authorizationHeader);
+  if (!authorizationHeader) {
+    return res.status(401).send("SOMETHING WENT WRONG.");
   }
-  const usersList = await User.find({});
-  return res.status(200).send(usersList);
-} catch (error) {
-  return res.status(401).send({message:"SOMETHING WENT WRONG."})
-}
+  const token = authorizationHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, "jkdfkjndkjd");
+    const user = await User.findOne({ _id: payload._id });
+    if (!user) {
+      return res
+        .status(401)
+        .send("YOU ARE NOT AUTHORIZED TO USE THIS SERVICE.");
+    }
+    const usersList = await User.find({});
+    return res.status(200).send(usersList);
+  } catch (error) {
+    return res.status(401).send({ message: "SOMETHING WENT WRONG." });
+  }
 };
 
 // GET SINGLE USER
@@ -95,4 +93,27 @@ export const findUserData = async (req, res) => {
   }
 
   return res.status(200).send(userData);
+};
+
+// LOGIN CREDENTIAL CHECK
+export const loginCredentialsCheck = async (req, res) => {
+  const loginCredentials = req.body;
+  const findUser = await User.findOne({
+    email: loginCredentials.email,
+  });
+  if (!findUser) {
+    return res.status(404).send("INVALID CREDENTIALS, LOGIN FAILED.");
+  }
+  const matchPassword = await bcrypt.compare(
+    loginCredentials.password,
+    findUser.password
+  );
+  if (!matchPassword) {
+    return res.status(409).send("INVALID CREDENTIALS, LOGIN FAILED.");
+  }
+  const accessToken = jwt.sign({ _id: findUser._id }, "jkdfkjndkjd", {
+    expiresIn: "1d",
+  });
+  console.log(accessToken);
+  return res.status(200).send(`HELLO ${findUser.name}, You are logged in.`);
 };
